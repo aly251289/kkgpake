@@ -1,0 +1,32 @@
+Response: {
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```json\n{\n  \"judul\": \"Pesta Siaga Kwartir Ranting Pangkah Sukses Digelar, MI Nurul Falah Bedug Raih Predikat Tergiat 1 Putri\",\n  \"kategori\": \"Pendidikan\",\n  \"tags\": \"Pesta Siaga, Pramuka, Kwartir Ranting Pangkah, Pendidikan Tegal, Prestasi Siswa\",\n  \"image_prompt\": \"A vibrant and energetic scene of a children's scout event (Pesta Siaga) at SMAN 1 Pangkah. Children aged 7-10 years old in scout uniforms are participating in various activities, some holding small flags or banners. There are adult supervisors and parents in the background. The atmosphere is joyful and focused. In the foreground, one group of children is receiving an award or certificate from an adult official. Bright sunny day. Professional news photography style.\",\n  \"isi\": \"\u003cp\u003e\u003cstrong\u003ePangkah, 10 Januari 2026\u003c/strong\u003e – Semangat kepramukaan membara di SMAN 1 Pangkah saat Kwartir Ranting (Kwarran) Kecamatan Pangkah sukses menyelenggarakan Pesta Siaga yang meriah. Acara tahunan ini diikuti oleh gugus depan dari berbagai Madrasah Ibtidaiyah (MI) dan Madrasah Ibtidaiyah Negeri (MIN) se-Kecamatan Pangkah, dengan tujuan mengasah kemandirian, kekompakan, dan keterampilan anggota Pramuka Siaga.\u003c/p\u003e\u003cp\u003ePesta Siaga, yang merupakan ajang unjuk kebolehan dan kreasi bagi Pramuka Siaga, diwarnai dengan berbagai kegiatan edukatif dan menyenangkan. Penilaian ketat dilakukan untuk menentukan peserta tergiat berdasarkan partisipasi aktif, kekompakan barung, dan penguasaan materi kepramukaan.\u003c/p\u003e\u003cp\u003eDari hasil penilaian yang telah dilakukan, Barung Putri dari MI Nurul Falah Bedug berhasil menunjukkan performa luar biasa dan dinobatkan sebagai Barung Tergiat 1 Putri. Prestasi gemilang juga diraih oleh Barung Putri dari MI Roudlotut Tholibin Kalikangkung yang menempati peringkat 4 Tergiat Putri, serta Barung Putra dari MIN 2 Tegal yang meraih predikat Tergiat 6 Putra.\u003c/p\u003e\u003cp\u003e\\\"Kami mengucapkan selamat dan apresiasi setinggi-tingginya kepada seluruh peserta, pembina, serta pihak sekolah yang telah berpartisipasi dan berkontribusi dalam Pesta Siaga Kwarran Pangkah tahun ini,\\\" ujar perwakilan panitia dalam sambutannya. \\\"Semoga prestasi ini menjadi motivasi untuk terus mengembangkan diri dan menumbuhkan jiwa kepramukaan yang tangguh.\\\"\u003c/p\u003e\u003cp\u003ePesta Siaga ini tidak hanya menjadi ajang kompetisi, tetapi juga sarana penting dalam membentuk karakter anak-anak melalui nilai-nilai kepramukaan, seperti kemandirian, disiplin, dan gotong royong. Diharapkan, kegiatan semacam ini dapat terus berlanjut dan melahirkan generasi muda yang berintegritas dan siap berkontribusi bagi bangsa.\u003c/p\u003e\"\n}\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 321,
+    "candidatesTokenCount": 651,
+    "totalTokenCount": 2219,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 321
+      }
+    ],
+    "thoughtsTokenCount": 1247
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "yxpiaZnmBKqqjuMP_cHjuQ4"
+}
+
+Error: 
