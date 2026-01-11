@@ -5,6 +5,7 @@ if (empty($_SESSION['admin_role']) || $_SESSION['admin_role'] != 'admin') {
     echo "<script>window.location='dashboard.php';</script>";
     exit;
 }
+require_once '../includes/database.php'; // Security: Include the new database helper
 
 $id = '';
 $nama = '';
@@ -20,9 +21,10 @@ $action = 'add';
 
 if (isset($_GET['id'])) {
     $action = 'edit';
-    $id = mysqli_real_escape_string($koneksi, $_GET['id']);
-    $query = mysqli_query($koneksi, "SELECT * FROM users WHERE id='$id'");
-    if (mysqli_num_rows($query) > 0) {
+    $id = $_GET['id'];
+    // Security: Use prepared statement to fetch user data
+    $query = db_query($koneksi, "SELECT * FROM users WHERE id=?", 'i', [$id]);
+    if ($query && mysqli_num_rows($query) > 0) {
         $row = mysqli_fetch_assoc($query);
         $nama = $row['nama_lengkap'];
         $username = $row['username'];
@@ -41,16 +43,17 @@ if (isset($_GET['id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nama = mysqli_real_escape_string($koneksi, $_POST['nama']);
-    $username_new = mysqli_real_escape_string($koneksi, $_POST['username']);
-    $role = mysqli_real_escape_string($koneksi, $_POST['role']);
+    // Security: No need for mysqli_real_escape_string with prepared statements
+    $nama = $_POST['nama'];
+    $username_new = $_POST['username'];
+    $role = $_POST['role'];
     $password = $_POST['password'];
 
     // School Data
-    $nama_sekolah = mysqli_real_escape_string($koneksi, $_POST['nama_sekolah']);
-    $deskripsi_sekolah = mysqli_real_escape_string($koneksi, $_POST['deskripsi_sekolah']);
-    $alamat_sekolah = mysqli_real_escape_string($koneksi, $_POST['alamat_sekolah']);
-    $telepon_sekolah = mysqli_real_escape_string($koneksi, $_POST['telepon_sekolah']);
+    $nama_sekolah = $_POST['nama_sekolah'];
+    $deskripsi_sekolah = $_POST['deskripsi_sekolah'];
+    $alamat_sekolah = $_POST['alamat_sekolah'];
+    $telepon_sekolah = $_POST['telepon_sekolah'];
 
     // Generate Slug
     $slug_sekolah = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $nama_sekolah)));
@@ -82,13 +85,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $valid = true;
 
-    // Check Unique Username
-    $check_sql = "SELECT id FROM users WHERE username='$username_new'";
+    // Security: Use prepared statement to check for unique username
     if ($action == 'edit') {
-        $check_sql .= " AND id != '$id'";
+        $check_sql = "SELECT id FROM users WHERE username=? AND id != ?";
+        $check = db_query($koneksi, $check_sql, 'si', [$username_new, $id]);
+    } else {
+        $check_sql = "SELECT id FROM users WHERE username=?";
+        $check = db_query($koneksi, $check_sql, 's', [$username_new]);
     }
-    $check = mysqli_query($koneksi, $check_sql);
-    if (mysqli_num_rows($check) > 0) {
+
+    if ($check && mysqli_num_rows($check) > 0) {
         echo "<script>
         document.addEventListener('DOMContentLoaded', function() {
             Swal.fire({ title: 'Gagal', text: 'Username sudah digunakan!', icon: 'error' });
@@ -107,9 +113,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </script>";
             } else {
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                // Security: Use prepared statement for INSERT query
                 $sql = "INSERT INTO users (nama_lengkap, username, password, role, nama_sekolah, slug_sekolah, logo_sekolah, deskripsi_sekolah, alamat_sekolah, telepon_sekolah) 
-                        VALUES ('$nama', '$username_new', '$hashed_password', '$role', '$nama_sekolah', '$slug_sekolah', '$logo_path', '$deskripsi_sekolah', '$alamat_sekolah', '$telepon_sekolah')";
-                if (mysqli_query($koneksi, $sql)) {
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $params = [
+                    $nama, $username_new, $hashed_password, $role, $nama_sekolah,
+                    $slug_sekolah, $logo_path, $deskripsi_sekolah, $alamat_sekolah, $telepon_sekolah
+                ];
+                if (db_query($koneksi, $sql, 'ssssssssss', $params)) {
                     echo "<script>
                     document.addEventListener('DOMContentLoaded', function() {
                         Swal.fire({ title: 'Berhasil', text: 'Pengguna berhasil ditambahkan!', icon: 'success' }).then(() => { window.location='users.php'; });
@@ -124,25 +135,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
         } else {
-            // Edit
+            // Security: Use prepared statement for UPDATE query
             $sql = "UPDATE users SET 
-                    nama_lengkap='$nama', 
-                    username='$username_new', 
-                    role='$role',
-                    nama_sekolah='$nama_sekolah',
-                    slug_sekolah='$slug_sekolah',
-                    logo_sekolah='$logo_path',
-                    deskripsi_sekolah='$deskripsi_sekolah',
-                    alamat_sekolah='$alamat_sekolah',
-                    telepon_sekolah='$telepon_sekolah'";
+                    nama_lengkap=?, username=?, role=?, nama_sekolah=?, slug_sekolah=?,
+                    logo_sekolah=?, deskripsi_sekolah=?, alamat_sekolah=?, telepon_sekolah=?";
+
+            $types = 'sssssssss';
+            $params = [
+                $nama, $username_new, $role, $nama_sekolah, $slug_sekolah,
+                $logo_path, $deskripsi_sekolah, $alamat_sekolah, $telepon_sekolah
+            ];
 
             if (!empty($password)) {
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $sql .= ", password='$hashed_password'";
+                $sql .= ", password=?";
+                $types .= 's';
+                $params[] = $hashed_password;
             }
-            $sql .= " WHERE id='$id'";
 
-            if (mysqli_query($koneksi, $sql)) {
+            $sql .= " WHERE id=?";
+            $types .= 'i';
+            $params[] = $id;
+
+            if (db_query($koneksi, $sql, $types, $params)) {
                 echo "<script>
                 document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire({ title: 'Berhasil', text: 'Data pengguna berhasil diperbarui!', icon: 'success' }).then(() => { window.location='users.php'; });

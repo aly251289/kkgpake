@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/koneksi.php';
+require_once '../includes/database.php'; // Security: Include the new database helper
 
 // Redirect if already logged in
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
@@ -11,16 +12,21 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true
 $error = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = mysqli_real_escape_string($koneksi, $_POST['username']);
+    // Security: No need for mysqli_real_escape_string with prepared statements
+    $username = $_POST['username'];
     $password = $_POST['password'];
 
-    $query = "SELECT * FROM users WHERE username = '$username'";
-    $result = mysqli_query($koneksi, $query);
+    // Security: Use prepared statement to prevent SQL Injection
+    $query = "SELECT * FROM users WHERE username = ?";
+    $result = db_query($koneksi, $query, 's', [$username]);
 
     if ($result && mysqli_num_rows($result) > 0) {
         $user = mysqli_fetch_assoc($result);
         // Verify password
         if (password_verify($password, $user['password'])) {
+            // Security: Regenerate session ID to prevent session fixation
+            session_regenerate_id(true);
+
             // Password correct, start session
             $_SESSION['admin_logged_in'] = true;
             $_SESSION['admin_id'] = $user['id'];

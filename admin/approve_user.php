@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/koneksi.php';
+require_once '../includes/database.php'; // Security: Include the new database helper
 
 // Admin check
 if (empty($_SESSION['admin_role']) || $_SESSION['admin_role'] != 'admin') {
@@ -13,10 +14,11 @@ if (!isset($_GET['id'])) {
     exit;
 }
 
-$user_id = mysqli_real_escape_string($koneksi, $_GET['id']);
+// Security: No need for mysqli_real_escape_string with prepared statements
+$user_id = $_GET['id'];
 
-// Fetch user data for notification
-$q_user = mysqli_query($koneksi, "SELECT * FROM users WHERE id='$user_id'");
+// Security: Use prepared statement to fetch user data
+$q_user = db_query($koneksi, "SELECT * FROM users WHERE id=?", 'i', [$user_id]);
 $d_user = mysqli_fetch_assoc($q_user);
 
 if (!$d_user) {
@@ -28,10 +30,9 @@ if (!$d_user) {
 $new_password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
 $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
-// Update user status to active AND set new password
-$sql = "UPDATE users SET status = 'active', password = '$hashed_password' WHERE id = '$user_id'";
-
-if (mysqli_query($koneksi, $sql)) {
+// Security: Use prepared statement for UPDATE query
+$sql = "UPDATE users SET status = 'active', password = ? WHERE id = ?";
+if (db_query($koneksi, $sql, 'si', [$hashed_password, $user_id])) {
     // Notify User via WA
     require_once '../includes/notification_helper.php';
 

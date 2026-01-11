@@ -1,15 +1,16 @@
 <?php include 'includes/header.php'; ?>
-<?php require_once 'config/koneksi.php'; ?>
+<?php
+require_once 'config/koneksi.php';
+require_once 'includes/database.php'; // Security: Include the new database helper
+?>
 
 <?php
-if (isset($_GET['slug'])) { // Use slug if available, fallback to id if needed, but slug is better for SEO
-    $slug = mysqli_real_escape_string($koneksi, $_GET['slug']);
-    $query = mysqli_query($koneksi, "SELECT kegiatan.*, users.nama_lengkap as author_name FROM kegiatan LEFT JOIN users ON kegiatan.created_by = users.id WHERE kegiatan.slug='$slug'");
+if (isset($_GET['slug'])) { // Use slug if available
+    $slug = $_GET['slug'];
+    // Security: Use prepared statement to fetch data
+    $query = db_query($koneksi, "SELECT kegiatan.*, users.nama_lengkap as author_name FROM kegiatan LEFT JOIN users ON kegiatan.created_by = users.id WHERE kegiatan.slug=?", 's', [$slug]);
 
-    // Fallback logic if found by ID (handling old links if any) - Optional
-    // if(mysqli_num_rows($query) == 0 && is_numeric($slug)) { ... }
-
-    if (mysqli_num_rows($query) > 0) {
+    if ($query && mysqli_num_rows($query) > 0) {
         $row = mysqli_fetch_assoc($query);
     } else {
         echo "<script>window.location='kegiatan.php';</script>";
@@ -182,10 +183,12 @@ if (isset($_GET['slug'])) { // Use slug if available, fallback to id if needed, 
                     <h3 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100">Kegiatan Lainnya</h3>
                     <div class="space-y-4">
                         <?php
-                        $query_other = mysqli_query($koneksi, "SELECT * FROM kegiatan WHERE id != '{$row['id']}' ORDER BY tanggal DESC LIMIT 4");
-                        while ($other = mysqli_fetch_assoc($query_other)):
-                            $img_other = $other['gambar'] ? $other['gambar'] : 'https://ui-avatars.com/api/?name=' . urlencode($other['judul']) . '&background=059669&color=fff&size=200';
-                            ?>
+                        // Security: Use prepared statement
+                        $query_other = db_query($koneksi, "SELECT * FROM kegiatan WHERE id != ? ORDER BY tanggal DESC LIMIT 4", 'i', [$row['id']]);
+                        if ($query_other) {
+                            while ($other = mysqli_fetch_assoc($query_other)) :
+                                $img_other = $other['gambar'] ? $other['gambar'] : 'https://ui-avatars.com/api/?name=' . urlencode($other['judul']) . '&background=059669&color=fff&size=200';
+                        ?>
                             <div class="flex gap-4 group">
                                 <a href="kegiatan_detail.php?slug=<?= $other['slug'] ?>"
                                     class="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden relative block">

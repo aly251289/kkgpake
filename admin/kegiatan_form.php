@@ -1,5 +1,8 @@
 <?php include 'includes/header.php'; ?>
-<?php require_once '../config/koneksi.php'; ?>
+<?php
+require_once '../config/koneksi.php';
+require_once '../includes/database.php'; // Security: Include the new database helper
+?>
 
 <?php
 $id = '';
@@ -13,9 +16,10 @@ $action = 'add';
 
 if (isset($_GET['id'])) {
     $action = 'edit';
-    $id = mysqli_real_escape_string($koneksi, $_GET['id']);
-    $query = mysqli_query($koneksi, "SELECT * FROM kegiatan WHERE id='$id'");
-    if (mysqli_num_rows($query) > 0) {
+    $id = $_GET['id'];
+    // Security: Use prepared statement to fetch data
+    $query = db_query($koneksi, "SELECT * FROM kegiatan WHERE id=?", 'i', [$id]);
+    if ($query && mysqli_num_rows($query) > 0) {
         $row = mysqli_fetch_assoc($query);
         $judul = $row['judul'];
         $kategori = $row['kategori'];
@@ -40,19 +44,20 @@ if (isset($_GET['id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $judul = mysqli_real_escape_string($koneksi, $_POST['judul']);
+    // Security: No need for mysqli_real_escape_string with prepared statements
+    $judul = $_POST['judul'];
     // Simple slug generator
     $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $judul)));
 
-    // Ensure slug is unique
-    $check_slug = mysqli_query($koneksi, "SELECT id FROM kegiatan WHERE slug = '$slug' AND id != '$id'");
-    if (mysqli_num_rows($check_slug) > 0) {
+    // Security: Use prepared statement to ensure slug is unique
+    $check_slug = db_query($koneksi, "SELECT id FROM kegiatan WHERE slug = ? AND id != ?", 'si', [$slug, $id]);
+    if ($check_slug && mysqli_num_rows($check_slug) > 0) {
         $slug = $slug . '-' . time();
     }
 
-    $kategori = mysqli_real_escape_string($koneksi, $_POST['kategori']);
-    $lokasi = mysqli_real_escape_string($koneksi, $_POST['lokasi']);
-    $deskripsi = mysqli_real_escape_string($koneksi, $_POST['deskripsi']);
+    $kategori = $_POST['kategori'];
+    $lokasi = $_POST['lokasi'];
+    $deskripsi = $_POST['deskripsi'];
     $tanggal = $_POST['tanggal'];
 
     // Image Upload Handling
@@ -201,21 +206,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!$upload_error) {
         if ($action == 'add') {
             $created_by = $_SESSION['admin_id'];
+            // Security: Use prepared statement for INSERT
             $sql = "INSERT INTO kegiatan (judul, slug, kategori, tanggal, lokasi, gambar, deskripsi, created_by) 
-                    VALUES ('$judul', '$slug', '$kategori', '$tanggal', '$lokasi', '$image_path', '$deskripsi', '$created_by')";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $params = [$judul, $slug, $kategori, $tanggal, $lokasi, $image_path, $deskripsi, $created_by];
+            $types = 'sssssssi';
+            $result = db_query($koneksi, $sql, $types, $params);
         } else {
+            // Security: Use prepared statement for UPDATE
             $sql = "UPDATE kegiatan SET 
-                    judul='$judul', 
-                    slug='$slug', 
-                    kategori='$kategori', 
-                    tanggal='$tanggal',
-                    lokasi='$lokasi', 
-                    gambar='$image_path', 
-                    deskripsi='$deskripsi' 
-                    WHERE id='$id'";
+                    judul=?, slug=?, kategori=?, tanggal=?, lokasi=?,
+                    gambar=?, deskripsi=?
+                    WHERE id=?";
+            $params = [$judul, $slug, $kategori, $tanggal, $lokasi, $image_path, $deskripsi, $id];
+            $types = 'sssssssi';
+            $result = db_query($koneksi, $sql, $types, $params);
         }
 
-        if (mysqli_query($koneksi, $sql)) {
+        if ($result) {
             echo "<script>
             document.addEventListener('DOMContentLoaded', function() {
                 Swal.fire({

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../../config/koneksi.php';
+require_once '../../includes/database.php'; // Security: Include the new database helper
 
 // Security check
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
@@ -31,19 +32,19 @@ if ($new_password !== $confirm_password) {
     exit;
 }
 
-// Check old password
-$query = mysqli_query($koneksi, "SELECT password FROM users WHERE id='$user_id'");
+// Security: Use prepared statement to check old password
+$query = db_query($koneksi, "SELECT password FROM users WHERE id=?", 'i', [$user_id]);
 $user = mysqli_fetch_assoc($query);
 
-if (!password_verify($old_password, $user['password'])) {
+if (!$user || !password_verify($old_password, $user['password'])) {
     $_SESSION['password_error'] = 'Password lama salah';
     header('Location: ../change_password');
     exit;
 }
 
-// Update password
+// Security: Use prepared statement to update password
 $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-$update = mysqli_query($koneksi, "UPDATE users SET password='$hashed_password', password_changed=1 WHERE id='$user_id'");
+$update = db_query($koneksi, "UPDATE users SET password=?, password_changed=1 WHERE id=?", 'si', [$hashed_password, $user_id]);
 
 if ($update) {
     $_SESSION['password_success'] = true;

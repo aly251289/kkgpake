@@ -1,16 +1,18 @@
 <?php
 require_once 'config/koneksi.php';
+require_once 'includes/database.php'; // Security: Include the new database helper
 
 // Logic Fetch Data moved to top for SEO/Meta Tags
 if (isset($_GET['slug'])) {
-    $slug = mysqli_real_escape_string($koneksi, $_GET['slug']);
-    $query = mysqli_query($koneksi, "SELECT berita.*, users.nama_lengkap as author_name FROM berita LEFT JOIN users ON berita.created_by = users.id WHERE berita.slug='$slug'");
+    $slug = $_GET['slug'];
+    // Security: Use prepared statement to fetch data
+    $query = db_query($koneksi, "SELECT berita.*, users.nama_lengkap as author_name FROM berita LEFT JOIN users ON berita.created_by = users.id WHERE berita.slug=?", 's', [$slug]);
 
-    if (mysqli_num_rows($query) > 0) {
+    if ($query && mysqli_num_rows($query) > 0) {
         $row = mysqli_fetch_assoc($query);
 
-        // Update views
-        mysqli_query($koneksi, "UPDATE berita SET views = views + 1 WHERE id = '{$row['id']}'");
+        // Security: Use prepared statement for view count update
+        db_query($koneksi, "UPDATE berita SET views = views + 1 WHERE id = ?", 'i', [$row['id']]);
 
         // Prepare SEO & Open Graph Data
         $page_title = $row['judul'];
@@ -200,10 +202,12 @@ include 'includes/header.php';
                     <h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-blue-600 pl-3">Berita Terbaru</h3>
                     <div class="space-y-4">
                         <?php
-                        $query_recent = mysqli_query($koneksi, "SELECT * FROM berita WHERE id != '{$row['id']}' ORDER BY tanggal DESC LIMIT 5");
-                        while ($recent = mysqli_fetch_assoc($query_recent)):
-                            $img_recent = $recent['gambar'] ? $recent['gambar'] : 'https://ui-avatars.com/api/?name=' . urlencode($recent['judul']) . '&background=2563eb&color=fff&size=200';
-                            ?>
+                        // Security: Use prepared statement for recent posts
+                        $query_recent = db_query($koneksi, "SELECT * FROM berita WHERE id != ? ORDER BY tanggal DESC LIMIT 5", 'i', [$row['id']]);
+                        if ($query_recent) {
+                            while ($recent = mysqli_fetch_assoc($query_recent)) :
+                                $img_recent = $recent['gambar'] ? $recent['gambar'] : 'https://ui-avatars.com/api/?name=' . urlencode($recent['judul']) . '&background=2563eb&color=fff&size=200';
+                        ?>
                             <div class="flex gap-4 group cursor-pointer"
                                 onclick="window.location='post.php?slug=<?= $recent['slug'] ?>'">
                                 <div class="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden relative">

@@ -1,18 +1,19 @@
 <?php
 session_start();
 require_once '../config/koneksi.php';
+require_once '../includes/database.php'; // Security: Include the new database helper
 
 if ($_SERVER['REQUEST_METHOD'] != 'POST') {
     header('Location: ../register');
     exit;
 }
 
-// Get form data (NO PASSWORD - will be generated upon approval)
-$nama_lengkap = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
-$username = mysqli_real_escape_string($koneksi, $_POST['username']);
-$no_hp = mysqli_real_escape_string($koneksi, $_POST['no_hp']);
-$npsn = mysqli_real_escape_string($koneksi, $_POST['npsn']);
-$nama_sekolah = mysqli_real_escape_string($koneksi, $_POST['nama_sekolah']);
+// Security: No need for mysqli_real_escape_string with prepared statements
+$nama_lengkap = $_POST['nama_lengkap'];
+$username = $_POST['username'];
+$no_hp = $_POST['no_hp'];
+$npsn = $_POST['npsn'];
+$nama_sekolah = $_POST['nama_sekolah'];
 
 // Validation
 $errors = [];
@@ -26,9 +27,9 @@ if (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
     $errors[] = 'Username hanya boleh huruf, angka, dan underscore';
 }
 
-// Check username uniqueness
-$check_username = mysqli_query($koneksi, "SELECT id FROM users WHERE username='$username'");
-if (mysqli_num_rows($check_username) > 0) {
+// Security: Use prepared statement to check username uniqueness
+$check_username = db_query($koneksi, "SELECT id FROM users WHERE username=?", 's', [$username]);
+if ($check_username && mysqli_num_rows($check_username) > 0) {
     $errors[] = 'Username sudah digunakan';
 }
 
@@ -61,7 +62,7 @@ $placeholder_password = password_hash('PENDING_APPROVAL', PASSWORD_DEFAULT);
 // Generate slug
 $slug_sekolah = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $nama_sekolah)));
 
-// Insert new user with status 'pending'
+// Security: Use prepared statement for INSERT query
 $sql = "INSERT INTO users (
     nama_lengkap, 
     username, 
@@ -72,19 +73,19 @@ $sql = "INSERT INTO users (
     npsn,
     nama_sekolah, 
     slug_sekolah
-) VALUES (
-    '$nama_lengkap',
-    '$username',
-    '$placeholder_password',
-    '$no_hp',
-    'contributor',
-    'pending',
-    '$npsn',
-    '$nama_sekolah',
-    '$slug_sekolah'
-)";
+) VALUES (?, ?, ?, ?, 'contributor', 'pending', ?, ?, ?)";
 
-if (mysqli_query($koneksi, $sql)) {
+$params = [
+    $nama_lengkap,
+    $username,
+    $placeholder_password,
+    $no_hp,
+    $npsn,
+    $nama_sekolah,
+    $slug_sekolah
+];
+
+if (db_query($koneksi, $sql, 'sssssss', $params)) {
     // Notify Admin via WA
     require_once '../includes/notification_helper.php';
 
