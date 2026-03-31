@@ -1,45 +1,61 @@
 <?php include 'includes/header.php'; ?>
-<?php require_once '../config/koneksi.php'; ?>
+<?php
+require_once '../config/koneksi.php';
+require_once '../includes/database.php'; // Security: Include the new database helper
+?>
 
 <?php
-// Get counts for dashboard
-$where_user = "";
+// Security: Use prepared statements for all dashboard queries
+$total_berita = 0;
+$total_kegiatan = 0;
+$total_agenda = 0;
+
 if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] != 'admin') {
-    $where_user = "WHERE created_by='" . $_SESSION['admin_id'] . "'";
+    $user_id = $_SESSION['admin_id'];
+    $query_berita = db_query($koneksi, "SELECT COUNT(*) as total FROM berita WHERE created_by=?", 'i', [$user_id]);
+    $total_berita = mysqli_fetch_assoc($query_berita)['total'];
+
+    $query_kegiatan = db_query($koneksi, "SELECT COUNT(*) as total FROM kegiatan WHERE created_by=?", 'i', [$user_id]);
+    $total_kegiatan = mysqli_fetch_assoc($query_kegiatan)['total'];
+
+    $query_agenda = db_query($koneksi, "SELECT COUNT(*) as total FROM agenda WHERE created_by=?", 'i', [$user_id]);
+    $total_agenda = mysqli_fetch_assoc($query_agenda)['total'];
+} else {
+    $query_berita = db_query($koneksi, "SELECT COUNT(*) as total FROM berita");
+    $total_berita = mysqli_fetch_assoc($query_berita)['total'];
+
+    $query_kegiatan = db_query($koneksi, "SELECT COUNT(*) as total FROM kegiatan");
+    $total_kegiatan = mysqli_fetch_assoc($query_kegiatan)['total'];
+
+    $query_agenda = db_query($koneksi, "SELECT COUNT(*) as total FROM agenda");
+    $total_agenda = mysqli_fetch_assoc($query_agenda)['total'];
 }
 
-$query_berita = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM berita $where_user");
-$total_berita = mysqli_fetch_assoc($query_berita)['total'];
-
-$query_kegiatan = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM kegiatan $where_user");
-$total_kegiatan = mysqli_fetch_assoc($query_kegiatan)['total'];
-
-$query_unduhan = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM unduhan");
+$query_unduhan = db_query($koneksi, "SELECT COUNT(*) as total FROM unduhan");
 $total_unduhan = mysqli_fetch_assoc($query_unduhan)['total'];
 
-$query_agenda = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM agenda $where_user");
-$total_agenda = mysqli_fetch_assoc($query_agenda)['total'];
-
-$query_users = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM users");
+$query_users = db_query($koneksi, "SELECT COUNT(*) as total FROM users");
 $total_users = mysqli_fetch_assoc($query_users)['total'];
 
 // Recent Activities
-$recent_berita = mysqli_query($koneksi, "SELECT judul, created_at FROM berita ORDER BY created_at DESC LIMIT 5");
-$recent_kegiatan = mysqli_query($koneksi, "SELECT judul, created_at FROM kegiatan ORDER BY created_at DESC LIMIT 5");
+$recent_berita = db_query($koneksi, "SELECT judul, created_at FROM berita ORDER BY created_at DESC LIMIT 5");
+$recent_kegiatan = db_query($koneksi, "SELECT judul, created_at FROM kegiatan ORDER BY created_at DESC LIMIT 5");
 
 // Pending Users (Admin Only)
 $pending_users = null;
 if ($_SESSION['admin_role'] == 'admin') {
-    $pending_users = mysqli_query($koneksi, "SELECT * FROM users WHERE status='pending' ORDER BY created_at DESC LIMIT 5");
+    $pending_users = db_query($koneksi, "SELECT * FROM users WHERE status='pending' ORDER BY created_at DESC LIMIT 5");
 }
 
 // Check if contributor needs to change password
 $show_password_reminder = false;
 if ($_SESSION['admin_role'] == 'contributor') {
-    $q_pw = mysqli_query($koneksi, "SELECT password_changed FROM users WHERE id='" . $_SESSION['admin_id'] . "'");
-    $d_pw = mysqli_fetch_assoc($q_pw);
-    if (isset($d_pw['password_changed']) && $d_pw['password_changed'] == 0) {
-        $show_password_reminder = true;
+    $q_pw = db_query($koneksi, "SELECT password_changed FROM users WHERE id=?", 'i', [$_SESSION['admin_id']]);
+    if ($q_pw) {
+        $d_pw = mysqli_fetch_assoc($q_pw);
+        if (isset($d_pw['password_changed']) && $d_pw['password_changed'] == 0) {
+            $show_password_reminder = true;
+        }
     }
 }
 

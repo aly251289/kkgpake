@@ -1,5 +1,8 @@
 <?php include 'includes/header.php'; ?>
-<?php require_once '../config/koneksi.php'; ?>
+<?php
+require_once '../config/koneksi.php';
+require_once '../includes/database.php'; // Security: Include the new database helper
+?>
 
 <?php
 $id = '';
@@ -14,9 +17,10 @@ $waktu_input = ''; // Add helper for slug if needed
 
 if (isset($_GET['id'])) {
     $action = 'edit';
-    $id = mysqli_real_escape_string($koneksi, $_GET['id']);
-    $query = mysqli_query($koneksi, "SELECT * FROM berita WHERE id='$id'");
-    if (mysqli_num_rows($query) > 0) {
+    $id = $_GET['id'];
+    // Security: Use prepared statement to fetch data
+    $query = db_query($koneksi, "SELECT * FROM berita WHERE id=?", 'i', [$id]);
+    if ($query && mysqli_num_rows($query) > 0) {
         $row = mysqli_fetch_assoc($query);
         $judul = $row['judul'];
         $kategori = $row['kategori'];
@@ -47,19 +51,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 
 
-    $judul = mysqli_real_escape_string($koneksi, $_POST['judul']);
+    // Security: No need for mysqli_real_escape_string with prepared statements
+    $judul = $_POST['judul'];
     // Simple slug generator
     $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $judul)));
 
-    // Ensure slug is unique
-    $check_slug = mysqli_query($koneksi, "SELECT id FROM berita WHERE slug = '$slug' AND id != '$id'");
-    if (mysqli_num_rows($check_slug) > 0) {
+    // Security: Use prepared statement to ensure slug is unique
+    $check_slug = db_query($koneksi, "SELECT id FROM berita WHERE slug = ? AND id != ?", 'si', [$slug, $id]);
+    if ($check_slug && mysqli_num_rows($check_slug) > 0) {
         $slug = $slug . '-' . time();
     }
 
-    $kategori = mysqli_real_escape_string($koneksi, $_POST['kategori']);
-    $tags = isset($_POST['tags']) ? mysqli_real_escape_string($koneksi, $_POST['tags']) : '';
-    $isi = mysqli_real_escape_string($koneksi, $_POST['isi']);
+    $kategori = $_POST['kategori'];
+    $tags = isset($_POST['tags']) ? $_POST['tags'] : '';
+    $isi = $_POST['isi'];
     $tanggal = $_POST['tanggal'];
     $penulis = $_SESSION['admin_name'];
 
@@ -69,9 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         if ($id) {
             // Preserve existing value
-            $q_ex = mysqli_query($koneksi, "SELECT is_featured FROM berita WHERE id='$id'");
-            $d_ex = mysqli_fetch_assoc($q_ex);
-            $is_featured = $d_ex['is_featured'];
+            $q_ex = db_query($koneksi, "SELECT is_featured FROM berita WHERE id=?", 'i', [$id]);
+            if ($q_ex) {
+                $d_ex = mysqli_fetch_assoc($q_ex);
+                $is_featured = $d_ex['is_featured'];
+            }
         } else {
             $is_featured = 0;
         }
@@ -218,19 +225,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!$upload_error) {
         // Exclusive Featured Logic: If current is featured, unset others (Admin only)
         if ($_SESSION['admin_role'] == 'admin' && $is_featured == 1) {
-            mysqli_query($koneksi, "UPDATE berita SET is_featured = 0");
+            // Security: Use prepared statement
+            db_query($koneksi, "UPDATE berita SET is_featured = 0");
         }
 
         if ($action == 'add') {
             $created_by = $_SESSION['admin_id'];
+            // Security: Use prepared statement for INSERT
             $sql = "INSERT INTO berita (judul, slug, kategori, tags, tanggal, gambar, isi, is_featured, penulis, created_by) 
-                    VALUES ('$judul', '$slug', '$kategori', '$tags', '$tanggal', '$image_path', '$isi', '$is_featured', '$penulis', '$created_by')";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $params = [$judul, $slug, $kategori, $tags, $tanggal, $image_path, $isi, $is_featured, $penulis, $created_by];
+            $types = 'sssssssisi';
+            $result = db_query($koneksi, $sql, $types, $params);
         } else {
-            // Verify ownership if not admin
+            // Security: Verify ownership if not admin
             if ($_SESSION['admin_role'] != 'admin') {
-                $check_owner = mysqli_query($koneksi, "SELECT created_by FROM berita WHERE id='$id'");
+                $check_owner = db_query($koneksi, "SELECT created_by FROM berita WHERE id=?", 'i', [$id]);
                 $owner = mysqli_fetch_assoc($check_owner);
-                if ($owner['created_by'] != $_SESSION['admin_id']) {
+                if (!$owner || $owner['created_by'] != $_SESSION['admin_id']) {
                     echo "<script>
                     document.addEventListener('DOMContentLoaded', function() {
                         Swal.fire({ title: 'Akses Ditolak', text: 'Anda tidak berhak mengedit postingan ini!', icon: 'error' }).then(() => { window.location='berita.php'; });
@@ -240,22 +252,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
+            // Security: Use prepared statement for UPDATE
             $sql = "UPDATE berita SET 
-                    judul='$judul', 
-                    slug='$slug', 
-                    kategori='$kategori', 
-                    tags='$tags',
-                    tanggal='$tanggal', 
-                    gambar='$image_path', 
-                    isi='$isi', 
-                    is_featured='$is_featured',
-                    penulis='$penulis'
-                    WHERE id='$id'";
+                    judul=?, slug=?, kategori=?, tags=?, tanggal=?,
+                    gambar=?, isi=?, is_featured=?, penulis=?
+                    WHERE id=?";
+            $params = [$judul, $slug, $kategori, $tags, $tanggal, $image_path, $isi, $is_featured, $penulis, $id];
+            $types = 'sssssssisi';
+            $result = db_query($koneksi, $sql, $types, $params);
         }
 
-        // DEBUG LOGGING
-        if (mysqli_query($koneksi, $sql)) {
-
+        if ($result) {
             echo "<script>
             document.addEventListener('DOMContentLoaded', function() {
                 Swal.fire({

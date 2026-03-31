@@ -12,9 +12,11 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 // Auto-fix role missing from session
 if (empty($_SESSION['admin_role']) && isset($_SESSION['admin_id'])) {
     require_once '../config/koneksi.php'; // Ensure connection is available for role fix
+    require_once '../includes/database.php'; // Security: Include the new database helper
     $uid_check = $_SESSION['admin_id'];
-    $q_role = mysqli_query($koneksi, "SELECT role FROM users WHERE id='$uid_check'");
-    if ($r_role = mysqli_fetch_assoc($q_role)) {
+    // Security: Use prepared statement to fetch role
+    $q_role = db_query($koneksi, "SELECT role FROM users WHERE id=?", 'i', [$uid_check]);
+    if ($q_role && $r_role = mysqli_fetch_assoc($q_role)) {
         $_SESSION['admin_role'] = !empty($r_role['role']) ? $r_role['role'] : 'contributor';
     } else {
         $_SESSION['admin_role'] = 'contributor'; // Default fallback
@@ -24,7 +26,9 @@ if (empty($_SESSION['admin_role']) && isset($_SESSION['admin_id'])) {
 $current_page = basename($_SERVER['PHP_SELF']);
 // Fetch Identity Data specifically for Admin Header (Favicon)
 require_once '../config/koneksi.php'; // Ensure connection is available
-$id_query = mysqli_query($koneksi, "SELECT * FROM identitas WHERE id=1");
+require_once '../includes/database.php'; // Security: Include the new database helper
+// Security: Use prepared statement to fetch identity data
+$id_query = db_query($koneksi, "SELECT * FROM identitas WHERE id=1");
 $d_identitas = mysqli_fetch_assoc($id_query);
 ?>
 <!DOCTYPE html>
